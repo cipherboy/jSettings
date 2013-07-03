@@ -1,0 +1,79 @@
+jPage v0.9 - A dynamic settings library with jQuery
+Depends: jQuery >= 1.5
+
+Copyright (C) 2013 Alex Scheel
+All rights reserved.
+Licensed under BSD 2 Clause License:
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+- Redistributions in binary form must reproduce the above copyright notice, 
+  this list of conditions and the following disclaimer in the documentation 
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+A dynamic settings library with jQuery
+
+Usage:
+  var settings = new jSettings();
+  settings.init('div-jsettings-id', '/path/to/settings/load.php');
+  settings.setSettings(["Username", 'username', 'text', 'regular'], ['split'], ["Password", 'password', 'password', 'hex']]);
+  settings.setSaveURI('/path/to/saveuri.php');
+  settings.setSplit(':');
+  settings.setSaveBehavior('both');
+  settings.setLabels(true);
+  settings.load();
+  
+API:
+  Main:
+    init(element, uri) - Set page element, settings loading uri
+    
+    load() - Starts jSettings, loads data, displays
+    
+  Config:
+    setSettings(settings) - Set settings options from array.
+    
+    setSaveURI(suri) - Set saving uri
+    
+    setURLAppend(data) - GET options to append to queries
+    
+    setSplit(split) - Delimiter for data loading
+    
+    setSaveBehavior(button|automatic|both) - Set save behavior
+    
+    setSuccess(value) - Result of successful save
+    
+    setLabels(true|false) - Show labels?
+    
+  Internal:
+    Data loading:
+      getData()
+      pushData()
+      saveData()
+      loadData()
+      
+    Events:
+      eventTriggerSave(event)
+      bindEvents()
+      unbindEvents()
+      
+    Display:
+      getSettings() 
+      loadSettings()
+    
+    unhex(text)
+
