@@ -228,8 +228,6 @@ function jSettings() {
     this.getSettings = function() {
         var result = "";
         
-        result += '<span id="' + this.selement + '-saving" class="jsettings-saving"></span><br>' + result;
-        
         for (var sid in this.settings) {
             var setting = this.settings[sid];
             result += this.getElement(setting);
@@ -238,6 +236,8 @@ function jSettings() {
         if ((this.behavior == 'button') || (this.behavior == 'both')) {
             result += '<button class="jsettings-button" id="' + this.selement + '-submit">Save</button>';
         }
+        
+        result += '<span id="' + this.selement + '-saving" class="jsettings-saving">&nbsp;</span>';
         
         return result;
     }
