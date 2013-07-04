@@ -201,6 +201,17 @@ function jSettings() {
                 result += '<img alt="' + id + '" id="' + this.selement + '-' + id + '" src="' + this.storage[id] + '" title="' + text + '" class="jsettings-image">';
             } else if (type == 'text-area') {
                 result += '<textarea id="' + this.selement + '-' + id + '" placeholder="' + text + '" title="' + text + '" class="jsettings-textarea"></textarea>';
+            } else if (type == 'select') {
+                result += '<select id="' + this.selement + '-' + id + '" class="jsettings-select">';
+                for (var hid in handle) {
+                    var option = handle[hid];
+                    if (option[1] != this.storage[id]) {
+                        result += '<option value="' + option[1] + '">' + option[0] + '</option>';
+                    } else {
+                        result += '<option value="' + option[1] + '" selected="selected">' + option[0] + '</option>';
+                    }
+                }
+                result += '</select>';
             } else {
                 result += '<input id="' + this.selement + '-' + id + '" placeholder="' + text + '" type="' + type + '" title="' + text + '" class="jsettings-input">';
             }
