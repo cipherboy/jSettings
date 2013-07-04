@@ -1,5 +1,5 @@
 /**
- * jPage v0.9 - A dynamic settings library with jQuery
+ * jPage v1.2 - A dynamic settings library with jQuery
  * Depends: jQuery >= 1.5
  * 
  * Copyright (C) 2013 Alex Scheel
@@ -32,7 +32,7 @@
  * Usage:
  *   var settings = new jSettings();
  *   settings.init('div-jsettings-id', '/path/to/settings/load.php');
- *   settings.setSettings(["Username", 'username', 'text', 'regular'], ['split'], ["Password", 'password', 'password', 'hex']]);
+ *   settings.setSettings(["jsettings-element", "Username", 'username', 'text', 'regular'], ["jsettings-space"], ["jsettings-element", "Password", 'password', 'password', 'hex']]);
  *   settings.setSaveURI('/path/to/saveuri.php');
  *   settings.setSplit(':');
  *   settings.setSaveBehavior('both');
@@ -63,17 +63,24 @@
  *   Internal:
  *     Data loading:
  *       getData()
+ *       getDataFromSetting()
  *       pushData()
+ *       pushDataFromSetting()
  *       saveData()
+ *       saveDataFromSetting()
  *       loadData()
+ *       loadDataFromSetting()
  *       
  *     Events:
  *       eventTriggerSave(event)
  *       bindEvents()
+ *       bindEventsFromSetting()
  *       unbindEvents()
+ *       unbindEventsFromSetting()
  *       
  *     Display:
  *       getSettings() 
+ *       getElement() 
  *       loadSettings()
  *     
  *     unhex(text)
@@ -137,68 +144,100 @@ function jSettings() {
     this.getData = function() {
         for (var sid in this.settings) {
             var setting = this.settings[sid];
-            if (setting[0] == 'split') {
+            if ((setting[0] == 'jsettings-space') || (setting[0] == 'jsettings-button')) {
                 continue;
             }
-            var ddata = '';
-            $.ajaxSetup({async:false});
-            $.get(this.loaduri + "?id=" + setting[1] + this.urlappend, function(data) {
-                ddata = data;
-            });
-            $.ajaxSetup({async:true});
             
-            if (ddata != 'error') {
-                var keyvalue = ddata.split(this.datasplit, 2);
-                
-                if (setting[3] == 'hex') {
-                    keyvalue[1] = this.unhex(keyvalue[1]);
-                }
-                
-                this.storage[setting[1]] = keyvalue[1];
-            } else {
-                alert("Error loading setting: " + setting[1]);
-                return;
-            }
+            this.getDataFromSetting(setting);
         }
         
         this.changed = [];
     }
     
+    this.getDataFromSetting = function(setting) {
+        if (setting[0] == 'jsettings-element') {
+            var ddata = '';
+            $.ajaxSetup({async:false});
+            $.get(this.loaduri + "?id=" + setting[2] + this.urlappend, function(data) {
+                ddata = data;
+            });
+            
+            $.ajaxSetup({async:true});
+            
+            if (ddata != 'error') {
+                var keyvalue = ddata.split(this.datasplit, 2);
+                
+                if (setting[4] == 'hex') {
+                    keyvalue[1] = this.unhex(keyvalue[1]);
+                }
+                
+                this.storage[setting[2]] = keyvalue[1];
+            } else {
+                alert("Error loading setting: " + setting[2]);
+                return;
+            }
+        } else if (setting[0] == 'jsettings-section') {
+            var celements = setting[4];
+            for (var id in celements) {
+                var nsetting = celements[id];
+                this.getDataFromSetting(nsetting);
+            }
+        }
+    }
+    
+    this.getElement = function(setting) {
+        var result = "";
+        if (setting[0] == "jsettings-element") {
+            var text = setting[1];
+            var id = setting[2];
+            var type = setting[3];
+            var handle = setting[4];
+            
+            if (this.labels) {
+                result += '<label id="' + this.selement + '-' + id + '-label" class="jsettings-label">' + text + '</label>';
+            }
+            
+            if (type == 'image') {
+                result += '<img alt="' + id + '" id="' + this.selement + '-' + id + '" src="' + this.storage[id] + '" title="' + text + '" class="jsettings-image">';
+            } else if (type == 'text-area') {
+                result += '<textarea id="' + this.selement + '-' + id + '" placeholder="' + text + '" title="' + text + '" class="jsettings-textarea"></textarea>';
+            } else {
+                result += '<input id="' + this.selement + '-' + id + '" placeholder="' + text + '" type="' + type + '" title="' + text + '" class="jsettings-input">';
+            }
+            if (this.labels) {
+                result += "<br>";
+            }
+        } else if (setting[0] == "jsettings-space") {
+            result += "<br>";
+        } else if (setting[0] == "jsettings-button") {
+            result += '<button id="' + this.selement + '-' + setting[2] + '" class="jsettings-button">' + setting[1] + '</button>';
+        } else if (setting[0] == "jsettings-section") {
+            result += '<div id="' + this.selement + '-' + setting[2] + '" class="jsettings-section">';
+            result += '<h3 id="' + this.selement + '-' + setting[2] + '-title" class="jsettings-section-title">' + setting[1] + '</h3>';
+            result += '<p id="' + this.selement + '-' + setting[2] + '-text" class="jsettings-section-description">' + setting[3] + '</p>';
+            var celements = setting[4];
+            for (var id in celements) {
+                var nsetting = celements[id];
+                result += this.getElement(nsetting);
+            }
+            result += '</div>';
+        }
+        return result;
+    }
+    
     this.getSettings = function() {
         var result = "";
         
+        result += '<span id="' + this.selement + '-saving" class="jsettings-saving"></span><br>' + result;
+        
         for (var sid in this.settings) {
             var setting = this.settings[sid];
-            var text = setting[0];
-            if (text != 'split') {
-                var id = setting[1];
-                var type = setting[2];
-                var handle = setting[3];
-                
-                if (this.labels) {
-                    result += '<label id="' + this.selement + '-' + id + '-label" class="jsettings-label">' + text + '</label>';
-                }
-                
-                if (type == 'image') {
-                    result += '<img alt="' + id + '" id="' + this.selement + '-' + id + '" src="' + this.storage[id] + '" title="' + text + '" class="jsettings-image">';
-                } else if (type == 'text-area') {
-                    result += '<textarea id="' + this.selement + '-' + id + '" placeholder="' + text + '" title="' + text + '" class="jsettings-textarea"></textarea>';
-                } else {
-                    result += '<input id="' + this.selement + '-' + id + '" placeholder="' + text + '" type="' + type + '" title="' + text + '" class="jsettings-input">';
-                }
-                if (this.labels) {
-                    result += "<br>";
-                }
-            } else {
-                result += "<br>";
-            }
+            result += this.getElement(setting);
         }
 
         if ((this.behavior == 'button') || (this.behavior == 'both')) {
             result += '<button class="jsettings-button" id="' + this.selement + '-submit">Save</button>';
         }
-        
-        result = '<span id="' + this.selement + '-saving" class="jsettings-saving"></span><br>' + result;
         
         return result;
     }
@@ -209,35 +248,78 @@ function jSettings() {
     
     this.pushData = function() {
         for (var cid in this.changed) {
-            var setting = this.settings[this.changed[cid]];
-            if (setting[0] == 'split') {
-                continue;
+            var changeid = this.changed[cid];
+            var levels = changeid.split('.');
+            var setting = this.settings;
+            for (var lid in levels) {
+                var level = levels[lid];
+                if (lid == 0) {
+                    setting = this.settings[level];
+                    if (setting[0] == 'jsettings-section') {
+                        setting = setting[4];
+                    } else {
+                        break;
+                    }
+                } else {
+                    if (setting[level][0] == 'jsettings-section') {
+                        setting = setting[level][4];
+                    } else {
+                        setting = setting[level];
+                        break;
+                    }
+                }
             }
-            var nvalue = this.storage[setting[1]];
-            $.ajaxSetup({async:false});
-            $.get(this.saveuri + "?id=" + setting[1] + "&val=" + nvalue + this.urlappend, function(data) {
-                ddata = data;
-            });
-            $.ajaxSetup({async:true});
             
-            if (ddata != this.success) {
-                alert("Error saving setting: " + setting[1] + ": " + ddata);
-            }
+            this.pushDataFromSetting(setting);
         }
         
         this.changed = [];
     }
     
+    this.pushDataFromSetting = function(setting) {
+        if (setting[0] == "jsettings-element") {
+            var nvalue = this.storage[setting[2]];
+            var ddata = '';
+            $.ajaxSetup({async:false});
+            $.get(this.saveuri + "?id=" + setting[2] + "&val=" + nvalue + this.urlappend, function(data) {
+                ddata = data;
+            });
+            $.ajaxSetup({async:true});
+            
+            if (ddata != this.success) {
+                alert("Error saving setting: " + setting[2] + ": " + ddata);
+            }
+        } else if (setting[0] == "jsettings-section") {
+            var celements = setting[4];
+            for (var id in celements) {
+                var nsetting = celements[id];
+                this.pushDataFromSetting(nsetting);
+            }
+        }
+    }
+    
     this.saveData = function() {
         for (var sid in this.settings) {
             var setting = this.settings[sid];
-            if (setting[0] == 'split') {
+            if ((setting[0] == 'jsettings-space') || (setting[0] == 'jsettings-button')) {
                 continue;
             }
             
-            if ($('#' + this.selement + "-" + setting[1]).val() != this.storage[setting[1]]) {
+            this.saveDataFromSetting(setting, sid);
+        }
+    }
+    
+    this.saveDataFromSetting = function(setting, sid) {
+        if (setting[0] == "jsettings-element") {
+            if ($('#' + this.selement + "-" + setting[2]).val() != this.storage[setting[2]]) {
+                this.storage[setting[2]] = $('#' + this.selement + "-" + setting[2]).val();
                 this.changed.push(sid);
-                this.storage[setting[1]] = $('#' + this.selement + "-" + setting[1]).val();
+            }
+        } else if (setting[0] == "jsettings-section") {
+            var celements = setting[4];
+            for (var id in celements) {
+                var nsetting = celements[id];
+                this.saveDataFromSetting(nsetting, sid + "." + id);
             }
         }
     }
@@ -245,11 +327,24 @@ function jSettings() {
     this.loadData = function() {
         for (var sid in this.settings) {
             var setting = this.settings[sid];
-            if (setting[0] == 'split') {
+            if ((setting[0] == 'jsettings-space') || (setting[0] == 'jsettings-button')) {
                 continue;
             }
-            if (setting[2] != 'image') {
-                $('#' + this.selement + '-' + setting[1]).val(this.storage[setting[1]]);
+            
+            this.loadDataFromSetting(setting);
+        }
+        
+        this.changed = [];
+    }
+    
+    this.loadDataFromSetting = function(setting) {
+        if (setting[0] == "jsettings-element") {
+            $('#' + this.selement + '-' + setting[2]).val(this.storage[setting[2]]);
+        } else if (setting[0] == "jsettings-section") {
+            var celements = setting[4];
+            for (var id in celements) {
+                var nsetting = celements[id];
+                this.loadDataFromSetting(nsetting);
             }
         }
     }
@@ -275,11 +370,24 @@ function jSettings() {
             
             for (var sid in this.settings) {
                 var setting = this.settings[sid];
-                if (setting[0] == 'split') {
-                    continue;
-                }
                 
-                $(document).on('focusout', '#' + this.selement + '-' + setting[1], { instance: this, element: '#' + this.selement + '-' + setting[1]}, this.eventTriggerSave);
+                if (setting[0] != 'jsettings-space') {
+                    this.bindEventsFromSetting(setting);
+                }
+            }
+        }
+    }
+    
+    this.bindEventsFromSetting = function(setting) {
+        if (setting[0] == "jsettings-element") {
+            $(document).on('focusout', '#' + this.selement + '-' + setting[2], { instance: this, element: '#' + this.selement + '-' + setting[2]}, this.eventTriggerSave);
+        } else if (setting[0] == "jsettings-button") {
+            $(document).on('click', '#' + this.selement + '-' + setting[2], { instance: this, element: '#' + this.selement + '-' + setting[2], callback: setting[3]}, setting[3]);
+        } else if (setting[0] == "jsettings-section") {
+            var celements = setting[4];
+            for (var id in celements) {
+                var nsetting = celements[id];
+                this.bindEventsFromSetting(nsetting);
             }
         }
     }
@@ -294,11 +402,24 @@ function jSettings() {
             
             for (var sid in this.settings) {
                 var setting = this.settings[sid];
-                if (setting[0] == 'split') {
-                    continue;
-                }
                 
-                $(document).off('focusout', '#' + this.selement + '-' + setting[1]);
+                if (setting[0] != 'jsettings-space') {
+                    this.unbindEventsFromSetting(setting);
+                }
+            }
+        }
+    }
+    
+    this.unbindEventsFromSetting = function(setting) {
+        if (setting[0] == "jsettings-element") {
+            $(document).off('focusout', '#' + this.selement + '-' + setting[2]);
+        } else if (setting[0] == "jsettings-button") {
+            $(document).off('click', '#' + this.selement + '-' + setting[2]);
+        } else if (setting[0] == "jsettings-section") {
+            var celements = setting[4];
+            for (var id in celements) {
+                var nsetting = celements[id];
+                this.unbindEventsFromSetting(nsetting);
             }
         }
     }
