@@ -436,6 +436,10 @@ function jSettings() {
     }
     
     this.unhex = function(text) {
+        if (text == undefined) {
+            return;
+        }
+        
         if (text.length % 2 != 0) {
             return;
         } else {
