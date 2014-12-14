@@ -1,8 +1,8 @@
 /**
- * jPage v1.2 - A dynamic settings library with jQuery
+ * jSettings v1.3 - A dynamic settings library with jQuery
  * Depends: jQuery >= 1.5
  * 
- * Copyright (C) 2013 Alex Scheel
+ * Copyright (C) 2013,2014 Alex Scheel
  * All rights reserved.
  * Licensed under BSD 2 Clause License:
  *
@@ -60,6 +60,12 @@
  *     
  *     setLabels(true|false) - Show labels?
  *     
+ *     setBindHandler(handler) - Called before binds
+ *     
+ *     setUnbindHandler(handler) - Called before unbinds
+ *     
+ *     showSettings(),hideSettings() - Show/hide settings
+ *     
  *   Internal:
  *     Data loading:
  *       getData()
@@ -99,6 +105,8 @@ function jSettings() {
     this.success = 'success';
     this.labels = false;
     this.ledited = '';
+    this.bindHandler = function() {};
+    this.unbindHandler = function() {};
     
     this.init = function(element, luri) {
         this.selement = element;
@@ -133,6 +141,14 @@ function jSettings() {
         this.labels = value;
     }
     
+    this.setBindHandler = function(handler) {
+        this.bindHandler = handler;
+    }
+    
+    this.setUnbindHandler = function(handler) {
+        this.unbindHandler = handler;
+    }
+    
     this.hideSettings = function() {
         $('#' + this.selement).hide();
     }
@@ -161,7 +177,6 @@ function jSettings() {
             $.get(this.loaduri + "?id=" + setting[2] + this.urlappend, function(data) {
                 ddata = data;
             });
-            
             $.ajaxSetup({async:true});
             
             if (ddata != 'error') {
@@ -182,6 +197,31 @@ function jSettings() {
                 var nsetting = celements[id];
                 this.getDataFromSetting(nsetting);
             }
+        } else if (setting[0] == 'jsettings-group') {
+            var gdata = '';
+            $.ajaxSetup({async:false});
+            $.get(this.loaduri + "?id=" + setting[1] + this.urlappend, function(data) {
+                gdata = data;
+            });
+            $.ajaxSetup({async:true});
+            
+            if (ddata != 'error') {
+                gdata = jQuery.parseJSON(gdata, true);
+                for (var dloc in gdata) {
+                    var ddata = gdata[dloc];
+                    
+                    var keyvalue = ddata.split(this.datasplit, 2);
+                    
+                    if (setting[4] == 'hex') {
+                        keyvalue[1] = this.unhex(keyvalue[1]);
+                    }
+                    
+                    this.storage[keyvalue[0]] = keyvalue[1];
+                }
+            } else {
+                alert("Error loading setting: " + setting[1]);
+                return;
+            }
         }
     }
     
@@ -193,7 +233,7 @@ function jSettings() {
             var type = setting[3];
             var handle = setting[4];
             
-            if (this.labels) {
+            if (this.labels && type != 'hidden') {
                 result += '<label id="' + this.selement + '-' + id + '-label" class="jsettings-label">' + text + '</label>';
             }
             
@@ -215,7 +255,7 @@ function jSettings() {
             } else {
                 result += '<input id="' + this.selement + '-' + id + '" placeholder="' + text + '" type="' + type + '" title="' + text + '" class="jsettings-input">';
             }
-            if (this.labels) {
+            if (this.labels && type != 'hidden') {
                 result += "<br>";
             }
         } else if (setting[0] == "jsettings-space") {
@@ -241,7 +281,14 @@ function jSettings() {
         
         for (var sid in this.settings) {
             var setting = this.settings[sid];
-            result += this.getElement(setting);
+            
+            if (setting[0] == 'jsettings-group') {
+                for (var i = 2; i < setting.length; i++) {
+                    result += this.getElement(setting[i]);
+                }
+            } else {            
+                result += this.getElement(setting);
+            }
         }
 
         if ((this.behavior == 'button') || (this.behavior == 'both')) {
@@ -306,6 +353,21 @@ function jSettings() {
                 var nsetting = celements[id];
                 this.pushDataFromSetting(nsetting);
             }
+        } else if (setting[0] == "jsettings-group") {
+            var query = "?id=" + setting[1];
+            for (var i = 2; i < setting.length; i++) {
+                query += "&" + setting[i][2] + '=' + this.storage[setting[i][2]];
+            }
+            
+            $.ajaxSetup({async:false});
+            $.get(this.saveuri + query + this.urlappend, function(data) {
+                ddata = data;
+            });
+            $.ajaxSetup({async:true});
+            
+            if (ddata != this.success) {
+                alert("Error saving setting: " + setting[1] + ": " + ddata);
+            }
         }
     }
     
@@ -332,6 +394,17 @@ function jSettings() {
                 var nsetting = celements[id];
                 this.saveDataFromSetting(nsetting, sid + "." + id);
             }
+        } else if (setting[0] == "jsettings-group") {
+            var pushed = false;
+            for (var i = 2; i < setting.length; i++) {
+                if ($('#' + this.selement + "-" + setting[i][2]).val() != this.storage[setting[i][2]]) {
+                    this.storage[setting[i][2]] = $('#' + this.selement + "-" + setting[i][2]).val();
+                    if (!pushed) {
+                        this.changed.push(sid);
+                        pushed = true;
+                    }
+                }
+            }
         }
     }
     
@@ -356,6 +429,10 @@ function jSettings() {
             for (var id in celements) {
                 var nsetting = celements[id];
                 this.loadDataFromSetting(nsetting);
+            }
+        } else if (setting[0] == "jsettings-group") {
+            for (var i = 2; i < setting.length; i++) {
+                this.loadDataFromSetting(setting[i]);
             }
         }
     }
@@ -387,6 +464,8 @@ function jSettings() {
                 }
             }
         }
+        
+        this.bindHandler();
     }
     
     this.bindEventsFromSetting = function(setting) {
@@ -419,6 +498,8 @@ function jSettings() {
                 }
             }
         }
+        
+        this.unbindHandler();
     }
     
     this.unbindEventsFromSetting = function(setting) {
